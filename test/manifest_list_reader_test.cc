@@ -25,14 +25,12 @@
 #include "iceberg/avro/avro_reader.h"
 #include "iceberg/manifest_list.h"
 #include "iceberg/manifest_reader.h"
-#include "iceberg/schema.h"
-#include "matchers.h"
 #include "temp_file_test_base.h"
 #include "test_common.h"
 
 namespace iceberg {
 
-class ManifestListReaderTest : public TempFileTestBase {
+class ManifestListReaderV2Test : public TempFileTestBase {
  protected:
   static void SetUpTestSuite() { avro::AvroReader::Register(); }
 
@@ -42,7 +40,7 @@ class ManifestListReaderTest : public TempFileTestBase {
     file_io_ = std::make_shared<iceberg::arrow::ArrowFileSystemFileIO>(local_fs_);
   }
 
-  std::vector<ManifestFile> PrepareTestManifestList() {
+  std::vector<ManifestFile> PrepareV2PartitionedTestManifestList() {
     std::vector<ManifestFile> manifest_files;
     std::string test_dir_prefix = "/tmp/db/db/iceberg_test/metadata/";
     std::vector<std::string> paths = {"2bccd69e-d642-4816-bba0-261cd9bd0d93-m0.avro",
@@ -121,24 +119,24 @@ class ManifestListReaderTest : public TempFileTestBase {
   std::shared_ptr<FileIO> file_io_;
 };
 
-TEST_F(ManifestListReaderTest, BasicTest) {
+TEST_F(ManifestListReaderV2Test, PartitionedTest) {
   std::string path = GetResourcePath(
       "snap-7412193043800610213-1-2bccd69e-d642-4816-bba0-261cd9bd0d93.avro");
   auto manifest_reader_result = ManifestListReader::MakeReader(path, file_io_);
   ASSERT_EQ(manifest_reader_result.has_value(), true);
+
   auto manifest_reader = std::move(manifest_reader_result.value());
   auto read_result = manifest_reader->Files();
   ASSERT_EQ(read_result.has_value(), true);
   ASSERT_EQ(read_result.value().size(), 4);
 
-  auto expected_manifest_list = PrepareTestManifestList();
+  auto expected_manifest_list = PrepareV2PartitionedTestManifestList();
   ASSERT_EQ(read_result.value(), expected_manifest_list);
 }
 
-TEST_F(ManifestListReaderTest, V2NonPartitionedTest) {
+TEST_F(ManifestListReaderV2Test, NonPartitionedTest) {
   std::string path = GetResourcePath(
       "snap-251167482216575399-1-ccb6dbcb-0611-48da-be68-bd506ea63188.avro");
-
   auto manifest_reader_result = ManifestListReader::MakeReader(path, file_io_);
   ASSERT_EQ(manifest_reader_result.has_value(), true);
 
