@@ -37,3 +37,4 @@ cmake-format.py
 *.avro
 *.json
 *.parquet
+src/iceberg/util/murmurhash3_internal.*
