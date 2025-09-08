@@ -61,13 +61,22 @@ svn \
 
 svn co "${dist_url}/${release_id}"
 pushd "${release_id}"
+
+echo "Renaming artifacts to their final release names..."
+for fname in ./*; do
+  mv "${fname}" "${fname//-rc${rc}/}"
+done
+echo "Renamed files:"
+ls -l
+
 gh release create "${tag}" \
+  --repo "${repository}" \
   --title "Apache Iceberg C++ ${version}" \
   --generate-notes \
   --verify-tag \
-  ${release_id}.tar.gz \
-  ${release_id}.tar.gz.asc \
-  ${release_id}.tar.gz.sha512
+  *.tar.gz \
+  *.tar.gz.asc \
+  *.tar.gz.sha512
 popd
 
 rm -rf "${release_id}"
