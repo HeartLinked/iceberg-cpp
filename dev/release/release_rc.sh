@@ -100,7 +100,7 @@ if [ "${RELEASE_SIGN}" -gt 0 ]; then
   gh release download "${rc_tag}" \
     --dir "${id}" \
     --pattern "${tar_gz}" \
-    --pattern "${tar_gz}.sha512"
+    --pattern "${tar_gz}.sha512" \
     --repo "${repository}" \
     --skip-existing
 
