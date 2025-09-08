@@ -115,6 +115,8 @@ ensure_source_directory() {
 
 test_source_distribution() {
   echo "Building and testing Apache Iceberg C++..."
+  PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL:-$(nproc || sysctl -n hw.ncpu || echo 4)}
+  echo "Using parallelism level: ${PARALLEL_LEVEL}"
 
   # Configure build
   cmake -S . -B build \
@@ -123,10 +125,10 @@ test_source_distribution() {
     -DICEBERG_BUILD_SHARED=ON
 
   # Build
-  cmake --build build --parallel $(nproc || sysctl -n hw.ncpu || echo 4)
+  cmake --build build --parallel "${PARALLEL_LEVEL}"
 
   # Run tests
-  ctest --test-dir build --output-on-failure --parallel $(nproc || sysctl -n hw.ncpu || echo 4)
+  ctest --test-dir build --output-on-failure --parallel "${PARALLEL_LEVEL}"
 
   # Install
   mkdir -p ./install_test

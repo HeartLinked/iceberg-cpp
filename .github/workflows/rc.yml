@@ -109,6 +109,10 @@ jobs:
           fi
           echo "VERSION=${version}"
           echo "RC=${rc}"
+          if [[ "${{ runner.os }}" == "macOS" ]]; then
+            echo "macOS runner detected. Setting parallelism to 2."
+            export CMAKE_BUILD_PARALLEL_LEVEL=2
+          fi
           # The verify_rc.sh script will untar and
           # run cmake, build, tests (ctest) and install
           VERIFY_SIGN=0 VERIFY_DOWNLOAD=0 dev/release/verify_rc.sh "${version}" "${rc}"
