@@ -53,7 +53,7 @@ if [ "${RELEASE_PULL}" -gt 0 ] || [ "${RELEASE_PUSH_TAG}" -gt 0 ]; then
   #   echo "This script must be ran with working copy of apache/iceberg-cpp."
   #   echo "The origin's URL: ${git_origin_url}"
   #   exit 1
-  fi
+  # fi
 fi
 
 if [ "${RELEASE_PULL}" -gt 0 ]; then
