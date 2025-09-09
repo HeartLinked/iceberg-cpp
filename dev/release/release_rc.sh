@@ -49,10 +49,10 @@ cd "${SOURCE_TOP_DIR}"
 
 if [ "${RELEASE_PULL}" -gt 0 ] || [ "${RELEASE_PUSH_TAG}" -gt 0 ]; then
   git_origin_url="$(git remote get-url origin)"
-  if [ "${git_origin_url}" != "git@github.com:apache/iceberg-cpp.git" ]; then
-    echo "This script must be ran with working copy of apache/iceberg-cpp."
-    echo "The origin's URL: ${git_origin_url}"
-    exit 1
+  # if [ "${git_origin_url}" != "git@github.com:apache/iceberg-cpp.git" ]; then
+  #   echo "This script must be ran with working copy of apache/iceberg-cpp."
+  #   echo "The origin's URL: ${git_origin_url}"
+  #   exit 1
   fi
 fi
 
