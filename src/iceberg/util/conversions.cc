@@ -52,83 +52,55 @@ Result<T> ReadLittleEndian(std::span<const uint8_t> data) {
   return FromLittleEndian(value);
 }
 
+template <TypeId type_id>
+Result<std::vector<uint8_t>> ToBytesImpl(const Literal::Value& value) {
+  using CppType = typename LiteralTraits<type_id>::ValueType;
+  return WriteLittleEndian(std::get<CppType>(value));
+}
+
+#define DISPATCH_LITERAL_TO_BYTES(type_id) \
+  case type_id:                            \
+    return ToBytesImpl<type_id>(value);
+
 Result<std::vector<uint8_t>> Conversions::ToBytes(const PrimitiveType& type,
                                                   const Literal::Value& value) {
-  std::vector<uint8_t> result;
   const auto type_id = type.type_id();
 
   switch (type_id) {
+    DISPATCH_LITERAL_TO_BYTES(TypeId::kInt)
+    DISPATCH_LITERAL_TO_BYTES(TypeId::kDate)
+    DISPATCH_LITERAL_TO_BYTES(TypeId::kLong)
+    DISPATCH_LITERAL_TO_BYTES(TypeId::kTime)
+    DISPATCH_LITERAL_TO_BYTES(TypeId::kTimestamp)
+    DISPATCH_LITERAL_TO_BYTES(TypeId::kTimestampTz)
+    DISPATCH_LITERAL_TO_BYTES(TypeId::kFloat)
+    DISPATCH_LITERAL_TO_BYTES(TypeId::kDouble)
     case TypeId::kBoolean: {
-      result.push_back(std::get<bool>(value) ? 0x01 : 0x00);
-      return result;
-    }
-
-    case TypeId::kInt: {
-      result = WriteLittleEndian(std::get<int32_t>(value));
-      return result;
-    }
-
-    case TypeId::kDate: {
-      result = WriteLittleEndian(std::get<int32_t>(value));
-      return result;
-    }
-
-    case TypeId::kLong: {
-      result = WriteLittleEndian(std::get<int64_t>(value));
-      return result;
-    }
-
-    case TypeId::kTime: {
-      result = WriteLittleEndian(std::get<int64_t>(value));
-      return result;
-    }
-
-    case TypeId::kTimestamp: {
-      result = WriteLittleEndian(std::get<int64_t>(value));
-      return result;
-    }
-
-    case TypeId::kTimestampTz: {
-      result = WriteLittleEndian(std::get<int64_t>(value));
-      return result;
-    }
-
-    case TypeId::kFloat: {
-      result = WriteLittleEndian(std::get<float>(value));
-      return result;
-    }
-
-    case TypeId::kDouble: {
-      result = WriteLittleEndian(std::get<double>(value));
-      return result;
+      return std::vector<uint8_t>{std::get<bool>(value) ? static_cast<uint8_t>(0x01)
+                                                        : static_cast<uint8_t>(0x00)};
     }
 
     case TypeId::kString: {
       const auto& str = std::get<std::string>(value);
-      result.insert(result.end(), str.begin(), str.end());
-      return result;
+      return std::vector<uint8_t>(str.begin(), str.end());
     }
 
     case TypeId::kBinary: {
-      const auto& binary_data = std::get<std::vector<uint8_t>>(value);
-      result.insert(result.end(), binary_data.begin(), binary_data.end());
-      return result;
+      return std::get<std::vector<uint8_t>>(value);
     }
 
     case TypeId::kFixed: {
       if (std::holds_alternative<std::array<uint8_t, 16>>(value)) {
         const auto& fixed_bytes = std::get<std::array<uint8_t, 16>>(value);
-        result.insert(result.end(), fixed_bytes.begin(), fixed_bytes.end());
+        return std::vector<uint8_t>(fixed_bytes.begin(), fixed_bytes.end());
       } else if (std::holds_alternative<std::vector<uint8_t>>(value)) {
-        result = std::get<std::vector<uint8_t>>(value);
+        return std::get<std::vector<uint8_t>>(value);
       } else {
         std::string actual_type = std::visit(
             [](auto&& arg) -> std::string { return typeid(arg).name(); }, value);
-
         return InvalidArgument("Invalid value type for Fixed literal, got type: {}",
                                actual_type);
       }
-      return result;
     }
       // TODO(Li Feiyang): Add support for UUID and Decimal
 
@@ -136,6 +108,8 @@ Result<std::vector<uint8_t>> Conversions::ToBytes(const PrimitiveType& type,
       return NotSupported("Serialization for type {} is not supported", type.ToString());
   }
 }
+
+#undef DISPATCH_LITERAL_TO_BYTES
 
 Result<std::vector<uint8_t>> Conversions::ToBytes(const Literal& literal) {
   // Cannot serialize special values

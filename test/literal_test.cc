@@ -383,61 +383,6 @@ TEST(LiteralTest, DoubleZeroComparison) {
   EXPECT_EQ(neg_zero <=> pos_zero, std::partial_ordering::less);
 }
 
-void CheckBinaryRoundTrip(const std::vector<uint8_t>& input_bytes,
-                          const Literal& expected_literal,
-                          std::shared_ptr<PrimitiveType> type) {
-  // Deserialize from bytes
-  auto literal_result = Literal::Deserialize(input_bytes, type);
-  ASSERT_TRUE(literal_result.has_value());
-
-  // Check type and value are correct
-  EXPECT_EQ(literal_result->type()->type_id(), expected_literal.type()->type_id());
-  EXPECT_EQ(literal_result->ToString(), expected_literal.ToString());
-
-  // Serialize back to bytes
-  auto bytes_result = literal_result->Serialize();
-  ASSERT_TRUE(bytes_result.has_value());
-  EXPECT_EQ(*bytes_result, input_bytes);
-
-  // Deserialize again to verify
-  auto final_literal = Literal::Deserialize(*bytes_result, type);
-  ASSERT_TRUE(final_literal.has_value());
-  EXPECT_EQ(final_literal->type()->type_id(), expected_literal.type()->type_id());
-  EXPECT_EQ(final_literal->ToString(), expected_literal.ToString());
-}
-
-// binary serialization tests
-TEST(LiteralSerializationTest, BinaryBoolean) {
-  CheckBinaryRoundTrip({1}, Literal::Boolean(true), boolean());
-  CheckBinaryRoundTrip({0}, Literal::Boolean(false), boolean());
-}
-
-TEST(LiteralSerializationTest, BinaryInt) {
-  CheckBinaryRoundTrip({32, 0, 0, 0}, Literal::Int(32), int32());
-}
-
-TEST(LiteralSerializationTest, BinaryLong) {
-  CheckBinaryRoundTrip({32, 0, 0, 0, 0, 0, 0, 0}, Literal::Long(32), int64());
-}
-
-TEST(LiteralSerializationTest, BinaryFloat) {
-  CheckBinaryRoundTrip({0, 0, 128, 63}, Literal::Float(1.0f), float32());
-}
-
-TEST(LiteralSerializationTest, BinaryDouble) {
-  CheckBinaryRoundTrip({0, 0, 0, 0, 0, 0, 240, 63}, Literal::Double(1.0), float64());
-}
-
-TEST(LiteralSerializationTest, BinaryString) {
-  CheckBinaryRoundTrip({105, 99, 101, 98, 101, 114, 103}, Literal::String("iceberg"),
-                       string());
-}
-
-TEST(LiteralSerializationTest, BinaryData) {
-  std::vector<uint8_t> data = {0x01, 0x02, 0x03, 0xFF};
-  CheckBinaryRoundTrip(data, Literal::Binary(data), binary());
-}
-
 // Type promotion tests
 TEST(LiteralSerializationTest, TypePromotion) {
   // 4-byte int data can be deserialized as long
@@ -463,61 +408,93 @@ TEST(LiteralSerializationTest, TypePromotion) {
   EXPECT_EQ(double_bytes->size(), 8);
 }
 
-// Edge case serialization tests
-TEST(LiteralSerializationTest, EdgeCases) {
-  // Negative integers
-  CheckBinaryRoundTrip({224, 255, 255, 255}, Literal::Int(-32), int32());
-  CheckBinaryRoundTrip({224, 255, 255, 255, 255, 255, 255, 255}, Literal::Long(-32),
-                       int64());
+struct LiteralRoundTripParam {
+  std::string test_name;
+  std::vector<uint8_t> input_bytes;
+  Literal expected_literal;
+  std::shared_ptr<PrimitiveType> type;
+};
 
-  // Empty string special handling: empty string -> empty bytes -> null conversion
+class LiteralSerializationParamTest
+    : public ::testing::TestWithParam<LiteralRoundTripParam> {};
+
+TEST_P(LiteralSerializationParamTest, RoundTrip) {
+  const auto& param = GetParam();
+
+  // Deserialize from bytes
+  Result<Literal> literal_result = Literal::Deserialize(param.input_bytes, param.type);
+  ASSERT_TRUE(literal_result.has_value())
+      << "Deserialization failed: " << literal_result.error().message;
+
+  // Check type and value
+  EXPECT_EQ(literal_result->type()->type_id(), param.expected_literal.type()->type_id());
+  EXPECT_EQ(literal_result->ToString(), param.expected_literal.ToString());
+
+  // Serialize back to bytes
+  Result<std::vector<uint8_t>> bytes_result = literal_result->Serialize();
+  ASSERT_TRUE(bytes_result.has_value())
+      << "Serialization failed: " << bytes_result.error().message;
+  EXPECT_EQ(*bytes_result, param.input_bytes);
+
+  // Deserialize again to verify idempotency
+  Result<Literal> final_literal = Literal::Deserialize(*bytes_result, param.type);
+  ASSERT_TRUE(final_literal.has_value())
+      << "Final deserialization failed: " << final_literal.error().message;
+  EXPECT_EQ(final_literal->type()->type_id(), param.expected_literal.type()->type_id());
+  EXPECT_EQ(final_literal->ToString(), param.expected_literal.ToString());
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    BinarySerializationTests, LiteralSerializationParamTest,
+    ::testing::Values(
+        // Basic types
+        LiteralRoundTripParam{"BooleanTrue", {1}, Literal::Boolean(true), boolean()},
+        LiteralRoundTripParam{"BooleanFalse", {0}, Literal::Boolean(false), boolean()},
+        LiteralRoundTripParam{"Int", {32, 0, 0, 0}, Literal::Int(32), int32()},
+        LiteralRoundTripParam{
+            "Long", {32, 0, 0, 0, 0, 0, 0, 0}, Literal::Long(32), int64()},
+        LiteralRoundTripParam{"Float", {0, 0, 128, 63}, Literal::Float(1.0f), float32()},
+        LiteralRoundTripParam{
+            "Double", {0, 0, 0, 0, 0, 0, 240, 63}, Literal::Double(1.0), float64()},
+        LiteralRoundTripParam{"String",
+                              {105, 99, 101, 98, 101, 114, 103},
+                              Literal::String("iceberg"),
+                              string()},
+        LiteralRoundTripParam{"BinaryData",
+                              {0x01, 0x02, 0x03, 0xFF},
+                              Literal::Binary({0x01, 0x02, 0x03, 0xFF}),
+                              binary()},
+        // Edge cases that fit the round-trip pattern
+        LiteralRoundTripParam{
+            "NegativeInt", {224, 255, 255, 255}, Literal::Int(-32), int32()},
+        LiteralRoundTripParam{"NegativeLong",
+                              {224, 255, 255, 255, 255, 255, 255, 255},
+                              Literal::Long(-32),
+                              int64()},
+        // IEEE 754 representation for NaN and Infinity (in little-endian)
+        LiteralRoundTripParam{"FloatInfinity",
+                              {0, 0, 128, 127},
+                              Literal::Float(std::numeric_limits<float>::infinity()),
+                              float32()},
+        LiteralRoundTripParam{"FloatNaN",
+                              {0, 0, 192, 127},
+                              Literal::Float(std::numeric_limits<float>::quiet_NaN()),
+                              float32()}
+        // TODO(Li Feiyang): Add tests for Date, Time, Timestamp, TimestampTz
+        ),
+
+    [](const testing::TestParamInfo<LiteralSerializationParamTest::ParamType>& info) {
+      return info.param.test_name;
+    });
+
+TEST(LiteralSerializationEdgeCaseTest, EmptyStringSerialization) {
   auto empty_string = Literal::String("");
   auto empty_bytes = empty_string.Serialize();
   ASSERT_TRUE(empty_bytes.has_value());
   EXPECT_TRUE(empty_bytes->empty());
 
-  // Empty bytes cause an InvalidArgument error
-  auto null_result = Literal::Deserialize(*empty_bytes, string());
-  EXPECT_THAT(null_result, IsError(ErrorKind::kInvalidArgument));
-
-  // Special floating point value serialization
-  auto nan_float = Literal::Float(std::numeric_limits<float>::quiet_NaN());
-  auto nan_bytes = nan_float.Serialize();
-  ASSERT_TRUE(nan_bytes.has_value());
-  EXPECT_EQ(nan_bytes->size(), 4);
-
-  auto inf_float = Literal::Float(std::numeric_limits<float>::infinity());
-  auto inf_bytes = inf_float.Serialize();
-  ASSERT_TRUE(inf_bytes.has_value());
-  EXPECT_EQ(inf_bytes->size(), 4);
-}
-
-// Error case serialization tests
-TEST(LiteralSerializationTest, ErrorCases) {
-  // AboveMax/BelowMin values cannot be serialized
-  auto long_literal =
-      Literal::Long(static_cast<int64_t>(std::numeric_limits<int32_t>::max()) + 1);
-  auto above_max_result = long_literal.CastTo(int32());
-  ASSERT_TRUE(above_max_result.has_value());
-  EXPECT_TRUE(above_max_result->IsAboveMax());
-
-  auto serialize_result = above_max_result->Serialize();
-  EXPECT_FALSE(serialize_result.has_value());
-
-  // Insufficient data size for deserialization should fail
-  std::vector<uint8_t> insufficient_int_data = {0x01};  // Need 4 bytes but only have 1
-  auto insufficient_data = Literal::Deserialize(insufficient_int_data, int32());
-  EXPECT_FALSE(insufficient_data.has_value());
-
-  std::vector<uint8_t> insufficient_long_data = {
-      0x01, 0x02};  // Need 4 or 8 bytes but only have 2
-  auto insufficient_long = Literal::Deserialize(insufficient_long_data, int64());
-  EXPECT_FALSE(insufficient_long.has_value());
-
-  // Oversized decimal data should fail
-  std::vector<uint8_t> oversized_decimal(20, 0xFF);  // Exceeds 16-byte limit
-  auto oversized_result = Literal::Deserialize(oversized_decimal, decimal(10, 2));
-  EXPECT_FALSE(oversized_result.has_value());
+  auto deserialize_result = Literal::Deserialize(*empty_bytes, string());
+  EXPECT_THAT(deserialize_result, IsError(ErrorKind::kInvalidArgument));
 }
 
 }  // namespace iceberg

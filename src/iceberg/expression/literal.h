@@ -150,4 +150,69 @@ class ICEBERG_EXPORT Literal {
   std::shared_ptr<PrimitiveType> type_;
 };
 
+template <TypeId type_id>
+struct LiteralTraits {
+  using ValueType = void;
+};
+
+template <>
+struct LiteralTraits<TypeId::kBoolean> {
+  using ValueType = bool;
+};
+
+template <>
+struct LiteralTraits<TypeId::kInt> {
+  using ValueType = int32_t;
+};
+
+template <>
+struct LiteralTraits<TypeId::kDate> {
+  using ValueType = int32_t;
+};
+
+template <>
+struct LiteralTraits<TypeId::kLong> {
+  using ValueType = int64_t;
+};
+
+template <>
+struct LiteralTraits<TypeId::kTime> {
+  using ValueType = int64_t;
+};
+
+template <>
+struct LiteralTraits<TypeId::kTimestamp> {
+  using ValueType = int64_t;
+};
+
+template <>
+struct LiteralTraits<TypeId::kTimestampTz> {
+  using ValueType = int64_t;
+};
+
+template <>
+struct LiteralTraits<TypeId::kFloat> {
+  using ValueType = float;
+};
+
+template <>
+struct LiteralTraits<TypeId::kDouble> {
+  using ValueType = double;
+};
+
+template <>
+struct LiteralTraits<TypeId::kString> {
+  using ValueType = std::string;
+};
+
+template <>
+struct LiteralTraits<TypeId::kBinary> {
+  using ValueType = std::vector<uint8_t>;
+};
+
+template <>
+struct LiteralTraits<TypeId::kFixed> {
+  using ValueType = std::vector<uint8_t>;
+};
+
 }  // namespace iceberg
