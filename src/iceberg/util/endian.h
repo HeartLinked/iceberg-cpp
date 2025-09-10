@@ -19,16 +19,11 @@
 
 #pragma once
 
-// #include <bit>
-// #include <concepts>
-// #include <cstdint>
 #include <algorithm>
+#include <array>
 #include <bit>
-#include <cstring>
-#include <span>
-#include <vector>
-
-#include "iceberg/result.h"
+#include <concepts>
+#include <cstdint>
 
 /// \file iceberg/util/endian.h
 /// \brief Endianness conversion utilities

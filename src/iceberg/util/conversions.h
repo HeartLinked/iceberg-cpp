@@ -19,25 +19,33 @@
 
 #pragma once
 
+#include <span>
 #include <vector>
 
 #include "iceberg/expression/literal.h"
-#include "iceberg/iceberg_export.h"
 #include "iceberg/result.h"
-#include "iceberg/type.h"
+#include "iceberg/type_fwd.h"
+
+/// \file iceberg/util/conversions.h
+/// \brief Conversion utilities for primitive types
 
 namespace iceberg {
+
+/// \brief Conversion utilities for primitive types
 class ICEBERG_EXPORT Conversions {
  public:
+  /// \brief Convert a literal value to bytes
   static Result<std::vector<uint8_t>> ToBytes(const PrimitiveType& type,
                                               const Literal::Value& value);
 
   static Result<std::vector<uint8_t>> ToBytes(const Literal& literal);
 
+  /// \brief Convert bytes to a literal value
   static Result<Literal::Value> FromBytes(const PrimitiveType& type,
                                           std::span<const uint8_t> data);
 
   static Result<Literal> FromBytes(std::shared_ptr<PrimitiveType> type,
                                    std::span<const uint8_t> data);
 };
+
 }  // namespace iceberg

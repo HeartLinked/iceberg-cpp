@@ -24,7 +24,6 @@
 
 #include "iceberg/exception.h"
 #include "iceberg/util/conversions.h"
-#include "iceberg/util/literal_format.h"
 
 namespace iceberg {
 

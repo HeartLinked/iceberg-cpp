@@ -143,8 +143,8 @@ class ICEBERG_EXPORT Literal {
  private:
   Literal(Value value, std::shared_ptr<PrimitiveType> type);
 
-  friend class LiteralCaster;
   friend class Conversions;
+  friend class LiteralCaster;
 
   Value value_;
   std::shared_ptr<PrimitiveType> type_;
