@@ -26,6 +26,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "iceberg/iceberg_export.h"
 #include "iceberg/result.h"
 #include "iceberg/table_identifier.h"
 #include "iceberg/type_fwd.h"
@@ -43,6 +44,13 @@ class ICEBERG_EXPORT Catalog {
   /// \brief Return the name for this catalog
   virtual std::string_view name() const = 0;
 
+  /// \brief List child namespaces from the given namespace.
+  ///
+  /// \param ns the parent namespace
+  /// \return a list of child namespaces;
+  ///         ErrorKind::kNoSuchNamespace if the given namespace does not exist
+  virtual Result<std::vector<Namespace>> ListNamespaces(const Namespace& ns) const = 0;
+
   /// \brief Create a namespace with associated properties.
   ///
   /// \param ns the namespace to create
@@ -54,13 +62,6 @@ class ICEBERG_EXPORT Catalog {
       const Namespace& ns,
       const std::unordered_map<std::string, std::string>& properties) = 0;
 
-  /// \brief List child namespaces from the given namespace.
-  ///
-  /// \param ns the parent namespace
-  /// \return a list of child namespaces;
-  ///         ErrorKind::kNoSuchNamespace if the given namespace does not exist
-  virtual Result<std::vector<Namespace>> ListNamespaces(const Namespace& ns) const = 0;
-
   /// \brief Get metadata properties for a namespace.
   ///
   /// \param ns the namespace to look up
@@ -69,6 +70,12 @@ class ICEBERG_EXPORT Catalog {
   virtual Result<std::unordered_map<std::string, std::string>> GetNamespaceProperties(
       const Namespace& ns) const = 0;
 
+  /// \brief Check whether the namespace exists.
+  ///
+  /// \param ns the namespace to check
+  /// \return true if the namespace exists, false otherwise
+  virtual Result<bool> NamespaceExists(const Namespace& ns) const = 0;
+
   /// \brief Drop a namespace.
   ///
   /// \param ns the namespace to drop
@@ -76,12 +83,6 @@ class ICEBERG_EXPORT Catalog {
   ///         ErrorKind::kNoSuchNamespace if the namespace does not exist;
   ///         ErrorKind::kNotAllowed if the namespace is not empty
   virtual Status DropNamespace(const Namespace& ns) = 0;
-
-  /// \brief Check whether the namespace exists.
-  ///
-  /// \param ns the namespace to check
-  /// \return true if the namespace exists, false otherwise
-  virtual Result<bool> NamespaceExists(const Namespace& ns) const = 0;
 
   /// \brief Update a namespace's properties by applying additions and removals.
   ///

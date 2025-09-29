@@ -24,6 +24,7 @@
 #include <nlohmann/json_fwd.hpp>
 
 #include "iceberg/result.h"
+#include "iceberg/schema.h"
 #include "iceberg/statistics_file.h"
 #include "iceberg/table_metadata.h"
 #include "iceberg/type_fwd.h"
